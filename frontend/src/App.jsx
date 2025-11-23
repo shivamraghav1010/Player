@@ -8,6 +8,7 @@ import Sport from './pages/Sport';
 import Upload from './pages/Upload';
 import Chat from './pages/Chat';
 import Notifications from './pages/Notifications';
+import AdminSports from './pages/AdminSports';
 import './App.css';
 
 // Protected Route component
@@ -86,6 +87,14 @@ function App() {
                 <ProtectedRoute>
                   <Notifications />
                 </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/sports"
+              element={
+                <AdminRoute>
+                  <AdminSports />
+                </AdminRoute>
               }
             />
             <Route path="/" element={<Navigate to="/dashboard" />} />

@@ -19,7 +19,9 @@ router.get('/', auth, async (req, res) => {
           ]
         },
         // Personal notifications (including follow notifications)
-        { recipient: req.user.id }
+        { recipient: req.user.id },
+        // Notifications created by admins (so admins can see notifications they sent)
+        ...(req.user.role === 'admin' ? [{ createdBy: req.user.id }] : [])
       ]
     })
       .populate('createdBy', 'username profilePic')
@@ -93,6 +95,43 @@ router.post('/follow', auth, async (req, res) => {
       title: 'New Follower',
       message: 'Someone started following you!',
       type: 'follow',
+      recipient: recipientId,
+      createdBy: req.user.id,
+    });
+
+    await notification.save();
+    res.status(201).json(notification);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Send notification to specific user (admin only)
+router.post('/send-to-user', adminAuth, async (req, res) => {
+  try {
+    const { recipientId, title, message, type } = req.body;
+
+    // Validate required fields
+    if (!recipientId || !title || !message) {
+      return res.status(400).json({ message: 'Recipient ID, title, and message are required' });
+    }
+
+    // Validate recipientId is a valid ObjectId
+    if (!require('mongoose').Types.ObjectId.isValid(recipientId)) {
+      return res.status(400).json({ message: 'Invalid recipient ID' });
+    }
+
+    // Check if recipient exists
+    const User = require('../models/User');
+    const recipientExists = await User.findById(recipientId);
+    if (!recipientExists) {
+      return res.status(404).json({ message: 'Recipient not found' });
+    }
+
+    const notification = new Notification({
+      title,
+      message,
+      type: type || 'general',
       recipient: recipientId,
       createdBy: req.user.id,
     });

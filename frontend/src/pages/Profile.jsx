@@ -22,6 +22,13 @@ const Profile = () => {
   const [profilePicFile, setProfilePicFile] = useState(null);
   const [uploadingPic, setUploadingPic] = useState(false);
   const [menuOpen, setMenuOpen] = useState(null);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [notificationForm, setNotificationForm] = useState({
+    title: '',
+    message: '',
+    type: 'general'
+  });
+  const [sendingNotification, setSendingNotification] = useState(false);
 
   const isOwnProfile = user && user.id === id;
   const isFollowing = user && profile?.followers?.includes(user.id);
@@ -117,6 +124,36 @@ const Profile = () => {
     } catch (error) {
       console.error('Error following/unfollowing user:', error);
     }
+  };
+
+  const handleSendNotification = async (e) => {
+    e.preventDefault();
+    setSendingNotification(true);
+
+    try {
+      await axios.post('http://localhost:5000/api/notifications/send-to-user', {
+        recipientId: id,
+        ...notificationForm
+      });
+
+      setShowNotificationModal(false);
+      setNotificationForm({
+        title: '',
+        message: '',
+        type: 'general'
+      });
+      alert('Notification sent successfully!');
+    } catch (error) {
+      console.error('Error sending notification:', error);
+      alert('Error sending notification');
+    } finally {
+      setSendingNotification(false);
+    }
+  };
+
+  const handleNotificationInputChange = (e) => {
+    const { name, value } = e.target;
+    setNotificationForm({ ...notificationForm, [name]: value });
   };
 
   const handleProfilePicChange = (e) => {
@@ -215,21 +252,35 @@ const Profile = () => {
             <div className="profile-info-section">
               <div className="profile-username-row">
                 <h1 className="profile-username">{profile.username}</h1>
-                {isOwnProfile ? (
-                  <button
-                    onClick={() => setIsEditing(!isEditing)}
-                    className="btn btn-secondary edit-profile-btn"
-                  >
-                    {isEditing ? 'Cancel' : 'Edit Profile'}
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleFollow}
-                    className={`btn ${isFollowing ? 'btn-secondary' : 'follow-btn'}`}
-                  >
-                    {isFollowing ? 'Following' : 'Follow'}
-                  </button>
-                )}
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  {isOwnProfile ? (
+                    <button
+                      onClick={() => setIsEditing(!isEditing)}
+                      className="btn btn-secondary edit-profile-btn"
+                    >
+                      {isEditing ? 'Cancel' : 'Edit Profile'}
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handleFollow}
+                        className={`btn ${isFollowing ? 'btn-secondary' : 'follow-btn'}`}
+                      >
+                        {isFollowing ? 'Following' : 'Follow'}
+                      </button>
+                      {user && user.role === 'admin' && (
+                        <button
+                          onClick={() => setShowNotificationModal(true)}
+                          className="btn btn-secondary"
+                          style={{ fontSize: '14px', padding: '8px 12px' }}
+                          title="Send Notification"
+                        >
+                          📢 Notify
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
 
               <div className="profile-stats">
@@ -408,6 +459,82 @@ const Profile = () => {
           }}>
             No videos uploaded yet.
           </p>
+        )}
+
+        {/* Notification Modal for Admins */}
+        {showNotificationModal && (
+          <div className="modal">
+            <div className="modal-content" style={{ maxWidth: '500px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h2 style={{ margin: 0 }}>Send Notification to {profile?.username}</h2>
+                <button
+                  onClick={() => setShowNotificationModal(false)}
+                  className="modal-close"
+                  style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' }}
+                >
+                  ×
+                </button>
+              </div>
+
+              <form onSubmit={handleSendNotification}>
+                <div className="form-group">
+                  <label>Title *</label>
+                  <input
+                    type="text"
+                    name="title"
+                    value={notificationForm.title}
+                    onChange={handleNotificationInputChange}
+                    placeholder="Notification title"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Message *</label>
+                  <textarea
+                    name="message"
+                    value={notificationForm.message}
+                    onChange={handleNotificationInputChange}
+                    placeholder="Notification message"
+                    rows="4"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Type</label>
+                  <select
+                    name="type"
+                    value={notificationForm.type}
+                    onChange={handleNotificationInputChange}
+                  >
+                    <option value="general">General</option>
+                    <option value="congratulation">Congratulation</option>
+                    <option value="announcement">Announcement</option>
+                    <option value="tournament">Tournament</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
+                  <button
+                    type="submit"
+                    className="btn"
+                    disabled={sendingNotification}
+                    style={{ opacity: sendingNotification ? 0.6 : 1 }}
+                  >
+                    {sendingNotification ? 'Sending...' : 'Send Notification'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowNotificationModal(false)}
+                    className="btn btn-secondary"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         )}
       </div>
     </>
